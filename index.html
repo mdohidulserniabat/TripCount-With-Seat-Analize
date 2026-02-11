@@ -1,1 +1,623 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Route-wise Coach Tool — Seats ≥34 Omit + Sold Analytics</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e2e8f0;
+      --shadow: 0 10px 30px rgba(2,6,23,.08);
+      --shadow2: 0 6px 18px rgba(2,6,23,.06);
+      --radius: 16px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #e9ecff 0%, rgba(233,236,255,0) 60%),
+                  radial-gradient(900px 450px at 90% 0%, #e6fff3 0%, rgba(230,255,243,0) 55%),
+                  var(--bg);
+      color:var(--text);
+      line-height:1.35;
+    }
+    .container{ max-width: 1120px; margin: 18px auto; padding: 0 14px 30px; }
+    header{
+      background: linear-gradient(135deg, #111827 0%, #0b1220 100%);
+      color:#fff;
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      box-shadow: var(--shadow);
+    }
+    header h1{ font-size: 18px; margin: 0 0 6px; }
+    header .sub{ font-size: 12px; color: rgba(255,255,255,.75); }
+    .grid{ display:grid; gap:14px; grid-template-columns: 1fr; margin-top: 14px; }
+    @media (min-width: 1000px){ .grid{ grid-template-columns: 1.1fr .9fr; } }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow2);
+    }
+    .controls{ display:grid; gap: 10px; }
+    label{ font-size: 12px; color: var(--muted); display:grid; gap:6px; }
+    input, select, button, textarea{
+      width:100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 14px;
+      background: #fff;
+      outline:none;
+    }
+    textarea{
+      min-height: 260px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+    button{
+      cursor:pointer;
+      border-color:#0f172a;
+      transition: transform .06s ease, opacity .15s ease;
+    }
+    button:active{ transform: scale(.99); }
+    .primary{
+      background:#0f172a;
+      color:#fff;
+    }
+    .row2{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+    .muted{ color: var(--muted); font-size: 12px; }
+    .status.ok{ color:#166534; }
+    .status.warn{ color:#b42318; }
+
+    .pillrow{ display:flex; flex-wrap:wrap; gap:8px; margin-top: 8px; }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color:#0f172a;
+      background:#fff;
+    }
+    .pill b{ font-weight: 700; }
+
+    .subcards{ display:grid; gap:14px; grid-template-columns: 1fr; }
+    @media (min-width: 1000px){ .subcards{ grid-template-columns: 1fr 1fr; } }
+
+    table{ width:100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+    th, td{ border-bottom: 1px solid var(--border); padding: 10px 8px; text-align:left; vertical-align: top; }
+    th{ font-size: 12px; color: var(--muted); font-weight: 600; }
+    .sectionTitle{ display:flex; justify-content:space-between; align-items:flex-end; gap:10px; }
+    .sectionTitle h2{ font-size: 14px; margin:0; }
+    .mini{ font-size: 12px; color: var(--muted); }
+    .divider{ height:1px; background: var(--border); margin: 10px 0; }
+    .checkline{ display:flex; align-items:center; gap:8px; }
+    .checkline input{ width:auto; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Route-wise Coach Tool</h1>
+    <div class="sub">
+      Omit: empty seats ≥ 34 • Sold (41 capacity): sold = 41 - emptySeats • Dhaka(route)=BIJOR(ODD), Route=JOR(EVEN)
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <div class="controls">
+        <label>
+          Route Select (পেস্ট করার আগে অবশ্যই সিলেক্ট করতে হবে)
+          <select id="routeSelect">
+            <option value="">-- Select Route --</option>
+          </select>
+        </label>
+
+        <div class="row2">
+          <label>
+            Admin: Add route
+            <input id="newRoute" placeholder="e.g., Khulna" />
+          </label>
+          <label style="visibility:hidden;">x</label>
+        </div>
+        <div class="row2">
+          <button id="addRouteBtn">Add Route</button>
+          <div class="checkline">
+            <input id="autoClear" type="checkbox" />
+            <span class="mini">Run এর পরে input clear</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <label>
+          Paste data
+          <textarea id="raw" placeholder="Select route first..." disabled></textarea>
+        </label>
+
+        <div class="pillrow">
+          <span class="pill">Kept: <b id="kept">0</b></span>
+          <span class="pill">Omitted: <b id="omitted">0</b></span>
+          <span class="pill">BIJOR (ODD): <b id="oddCount">0</b></span>
+          <span class="pill"><span id="routeNamePill">Route</span> JOR (EVEN): <b id="evenCount">0</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <label>
+          Filter Type
+          <select id="filterType">
+            <option value="all" selected>All</option>
+            <option value="today">Today (device date)</option>
+            <option value="monthly">Monthly</option>
+            <option value="range">Custom Range</option>
+          </select>
+        </label>
+
+        <div id="todayBox" class="muted" style="display:none;">Today: <b id="todayIso"></b></div>
+
+        <div id="monthlyBox" class="row2" style="display:none;">
+          <label>Year <input id="year" type="number" value="2026" min="2000" max="2100" /></label>
+          <label>Month <input id="month" type="number" value="1" min="1" max="12" /></label>
+        </div>
+
+        <div id="rangeBox" class="row2" style="display:none;">
+          <label>Start <input id="startDate" type="date" /></label>
+          <label>End <input id="endDate" type="date" /></label>
+        </div>
+
+        <div class="row2">
+          <button class="primary" id="runBtn">Run</button>
+          <button id="clearBtn">Clear</button>
+        </div>
+
+        <div id="status" class="muted status"></div>
+
+        <div class="divider"></div>
+
+        <div class="mini"><b>Sold Analytics (Capacity 41)</b></div>
+        <div class="pillrow">
+          <span class="pill">Total Sold: <b id="soldTotal">0</b></span>
+          <span class="pill">JOR Sold: <b id="soldEven">0</b></span>
+          <span class="pill">BIJOR Sold: <b id="soldOdd">0</b></span>
+        </div>
+        <div class="pillrow">
+          <span class="pill">JOR Avg/Bus: <b id="avgEven">0</b></span>
+          <span class="pill">BIJOR Avg/Bus: <b id="avgOdd">0</b></span>
+          <span class="pill">Total Avg/Bus: <b id="avgTotal">0</b></span>
+        </div>
+        <div id="soldInfo" class="muted"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <div class="sectionTitle">
+      <div>
+        <h2 id="roadTitle">Select a route to see results</h2>
+        <div class="mini">Dhaka(route) = BIJOR (ODD), Route = JOR (EVEN)</div>
+      </div>
+      <div class="mini">
+        Show:
+        <select id="showLimit" style="width:160px;">
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="200" selected>200</option>
+          <option value="999999">All</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="subcards" style="margin-top:12px;">
+      <div class="card" style="box-shadow:none;">
+        <div class="sectionTitle">
+          <h2 id="dhakaHeader">Dhaka side trip (BIJOR/ODD)</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:60px;">#</th>
+              <th>Trip Date</th>
+              <th style="width:110px;">Empty Seats</th>
+              <th>Coach No</th>
+            </tr>
+          </thead>
+          <tbody id="oddBody"></tbody>
+        </table>
+        <div id="oddNote" class="mini"></div>
+      </div>
+
+      <div class="card" style="box-shadow:none;">
+        <div class="sectionTitle">
+          <h2 id="routeHeader">Route side trip (JOR/EVEN)</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:60px;">#</th>
+              <th>Trip Date</th>
+              <th style="width:110px;">Empty Seats</th>
+              <th>Coach No</th>
+            </tr>
+          </thead>
+          <tbody id="evenBody"></tbody>
+        </table>
+        <div id="evenNote" class="mini"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STORAGE_KEY = "coach_tool_routes_v2";
+  const defaultRoutes = ["Barishal", "Rangpur"];
+  const CAPACITY_41 = 41;
+
+  const routeSelect = document.getElementById("routeSelect");
+  const rawTextarea = document.getElementById("raw");
+  const roadTitle = document.getElementById("roadTitle");
+  const routeNamePill = document.getElementById("routeNamePill");
+  const dhakaHeader = document.getElementById("dhakaHeader");
+  const routeHeader = document.getElementById("routeHeader");
+
+  function loadRoutes() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      const s = new Set(defaultRoutes.map(x => x.trim()).filter(Boolean));
+      if (Array.isArray(arr)) for (const r of arr) s.add(String(r).trim());
+      return Array.from(s).filter(Boolean);
+    } catch { return defaultRoutes.slice(); }
+  }
+  function saveRoutes(routes) { localStorage.setItem(STORAGE_KEY, JSON.stringify(routes)); }
+
+  function refreshRouteDropdown() {
+    const routes = loadRoutes().sort((a,b)=>a.localeCompare(b));
+    const current = routeSelect.value;
+    routeSelect.innerHTML = `<option value="">-- Select Route --</option>`;
+    for (const r of routes) {
+      const opt = document.createElement("option");
+      opt.value = r;
+      opt.textContent = r;
+      routeSelect.appendChild(opt);
+    }
+    if (routes.includes(current)) routeSelect.value = current;
+  }
+
+  const MONTHS = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+  const pad2 = n => String(n).padStart(2,"0");
+  const toISODate = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+
+  function setStatus(msg, kind="") {
+    const el = document.getElementById("status");
+    el.textContent = msg || "";
+    el.classList.remove("ok","warn");
+    if (kind) el.classList.add(kind);
+  }
+
+  function parseBlockDate(blockText){
+    const m = blockText.match(/\b(\d{2})\s+([A-Za-z]{3})\s+(\d{4})\b/);
+    if(!m) return null;
+    const dd = Number(m[1]);
+    const mon = m[2].toLowerCase();
+    const yyyy = Number(m[3]);
+    if(!(mon in MONTHS)) return null;
+    const dt = new Date(yyyy, MONTHS[mon], dd);
+    if(dt.getFullYear()!==yyyy || dt.getMonth()!==MONTHS[mon] || dt.getDate()!==dd) return null;
+    return dt;
+  }
+
+  function parseEmptySeats(blockText){
+    const m = blockText.match(/\bSeats\b[\s\r\n]+(\d+)\b/i);
+    return m ? Number(m[1]) : null;
+  }
+
+  function normalizeForParity(raw){
+    let s = (raw || "").trim();
+    s = s.replace(/\.+\s*$/g, "");
+    s = s.replace(/\s+/g, " ");
+    s = s.replace(/^\s*sp[\s\-\.]*/i, "SP-");
+    s = s.replace(/^SP-\s+/, "SP-");
+    return s.toUpperCase();
+  }
+
+  function extractFirstNumber(s){
+    const m = (s || "").match(/(\d+)/);
+    return m ? Number(m[1]) : null;
+  }
+
+  function parity(n){
+    if(n===null || Number.isNaN(n)) return "UNKNOWN";
+    return (n%2===0) ? "EVEN" : "ODD";
+  }
+
+  function parseRecords(rawText){
+    const parts = rawText.split(/Coach No/i);
+    const kept = [];
+    let omitted = 0;
+    let parsedBlocks = 0;
+
+    for (let i=1; i<parts.length; i++){
+      const block = parts[i].trim();
+      if (!block) continue;
+
+      const lines = block.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+      if (!lines.length) continue;
+
+      parsedBlocks++;
+
+      const coachRaw = lines[0];
+      const dt = parseBlockDate(block);
+      if (!dt) continue;
+
+      const emptySeats = parseEmptySeats(block);
+
+      // OMIT if empty seats >= 34
+      if (emptySeats !== null && emptySeats >= 34) { omitted++; continue; }
+
+      const num = extractFirstNumber(normalizeForParity(coachRaw));
+      kept.push({
+        coachNo: coachRaw.replace(/\.+\s*$/g, "").trim(),
+        date: dt,
+        dateISO: toISODate(dt),
+        emptySeats,
+        parity: parity(num)
+      });
+    }
+    return { kept, omitted, parsedBlocks };
+  }
+
+  function applyFilter(records, filterType){
+    if (filterType === "all") return records;
+
+    if (filterType === "today") {
+      const todayISO = toISODate(new Date());
+      return records.filter(r => r.dateISO === todayISO);
+    }
+
+    if (filterType === "monthly") {
+      const y = Number(document.getElementById("year").value || 0);
+      const m = Number(document.getElementById("month").value || 0);
+      if (!y || m < 1 || m > 12) return [];
+      return records.filter(r => r.date.getFullYear() === y && (r.date.getMonth()+1) === m);
+    }
+
+    if (filterType === "range") {
+      const s = document.getElementById("startDate").value;
+      const e = document.getElementById("endDate").value;
+      if (!s || !e) return [];
+      const start = new Date(s + "T00:00:00");
+      const end = new Date(e + "T23:59:59");
+      if (start > end) return [];
+      return records.filter(r => r.date >= start && r.date <= end);
+    }
+    return records;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderTable(records, tbodyId, noteId, limit){
+    const tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = "";
+    const shown = records.slice(0, limit);
+
+    shown.forEach((r, idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${idx+1}</td>
+        <td>${r.dateISO}</td>
+        <td>${r.emptySeats === null ? "" : r.emptySeats}</td>
+        <td>${escapeHtml(r.coachNo)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const note = document.getElementById(noteId);
+    note.textContent = records.length > limit
+      ? `Showing first ${limit} of ${records.length} rows.`
+      : (records.length ? `Showing ${records.length} rows.` : `No rows to show.`);
+  }
+
+  function computeSoldAnalytics(allFiltered, evens, odds) {
+    // Only kept rows are passed in (emptySeats < 34).
+    // Analytics requires 0..41 emptySeats.
+    const valid = r => typeof r.emptySeats === "number" && r.emptySeats >= 0 && r.emptySeats <= CAPACITY_41;
+
+    const vAll = allFiltered.filter(valid);
+    const vEven = evens.filter(valid);
+    const vOdd  = odds.filter(valid);
+
+    const sum = rows => rows.reduce((acc, r) => acc + (CAPACITY_41 - r.emptySeats), 0);
+    const avg = (s, c) => c ? (s / c) : 0;
+
+    const totalSold = sum(vAll);
+    const evenSold  = sum(vEven);
+    const oddSold   = sum(vOdd);
+
+    return {
+      totalSold, evenSold, oddSold,
+      evenAvg: avg(evenSold, vEven.length),
+      oddAvg: avg(oddSold, vOdd.length),
+      totalAvg: avg(totalSold, vAll.length),
+      busesAll: vAll.length, busesEven: vEven.length, busesOdd: vOdd.length
+    };
+  }
+
+  function setSoldUI(a){
+    document.getElementById("soldTotal").textContent = String(a.totalSold);
+    document.getElementById("soldEven").textContent = String(a.evenSold);
+    document.getElementById("soldOdd").textContent = String(a.oddSold);
+
+    document.getElementById("avgEven").textContent = a.busesEven ? a.evenAvg.toFixed(2) : "0";
+    document.getElementById("avgOdd").textContent = a.busesOdd ? a.oddAvg.toFixed(2) : "0";
+    document.getElementById("avgTotal").textContent = a.busesAll ? a.totalAvg.toFixed(2) : "0";
+
+    document.getElementById("soldInfo").textContent =
+      `Analytics counted buses → Total: ${a.busesAll}, JOR: ${a.busesEven}, BIJOR: ${a.busesOdd}`;
+  }
+
+  function resetSoldUI(){
+    document.getElementById("soldTotal").textContent = "0";
+    document.getElementById("soldEven").textContent = "0";
+    document.getElementById("soldOdd").textContent = "0";
+    document.getElementById("avgEven").textContent = "0";
+    document.getElementById("avgOdd").textContent = "0";
+    document.getElementById("avgTotal").textContent = "0";
+    document.getElementById("soldInfo").textContent = "";
+  }
+
+  const filterTypeEl = document.getElementById("filterType");
+  const monthlyBox = document.getElementById("monthlyBox");
+  const rangeBox = document.getElementById("rangeBox");
+  const todayBox = document.getElementById("todayBox");
+
+  function toggleFilterUI(){
+    const ft = filterTypeEl.value;
+    monthlyBox.style.display = (ft==="monthly") ? "grid" : "none";
+    rangeBox.style.display = (ft==="range") ? "grid" : "none";
+    todayBox.style.display = (ft==="today") ? "block" : "none";
+  }
+
+  function clearOutput(){
+    document.getElementById("kept").textContent = "0";
+    document.getElementById("omitted").textContent = "0";
+    document.getElementById("oddCount").textContent = "0";
+    document.getElementById("evenCount").textContent = "0";
+    resetSoldUI();
+    renderTable([], "oddBody", "oddNote", Number(document.getElementById("showLimit").value||200));
+    renderTable([], "evenBody", "evenNote", Number(document.getElementById("showLimit").value||200));
+  }
+
+  function onRouteChange(){
+    const route = routeSelect.value;
+    if (!route){
+      rawTextarea.disabled = true;
+      rawTextarea.placeholder = "Select route first...";
+      roadTitle.textContent = "Select a route to see results";
+      routeNamePill.textContent = "Route";
+      dhakaHeader.textContent = "Dhaka side trip (BIJOR/ODD)";
+      routeHeader.textContent = "Route side trip (JOR/EVEN)";
+      setStatus("Route select না করলে paste/run করা যাবে না।", "warn");
+      clearOutput();
+      return;
+    }
+    rawTextarea.disabled = false;
+    rawTextarea.placeholder = `Paste text for ${route} route...`;
+    roadTitle.textContent = `${route} Road`;
+    routeNamePill.textContent = route;
+    dhakaHeader.textContent = `Dhaka(${route}) side trip (BIJOR/ODD)`;
+    routeHeader.textContent = `${route} side trip (JOR/EVEN)`;
+    setStatus("", "");
+    if (rawTextarea.value.trim()) run();
+  }
+
+  function run(){
+    const route = routeSelect.value;
+    if (!route){ setStatus("আগে route select করুন।", "warn"); return; }
+
+    const raw = rawTextarea.value || "";
+    if (!raw.trim()){ setStatus("টেক্সট পেস্ট করুন, তারপর Run চাপুন।", "warn"); clearOutput(); return; }
+
+    const ft = filterTypeEl.value;
+    if (ft === "monthly"){
+      const y = Number(document.getElementById("year").value||0);
+      const m = Number(document.getElementById("month").value||0);
+      if (!y || m<1 || m>12){ setStatus("Monthly: Year/Month ঠিক দিন।", "warn"); return; }
+    }
+    if (ft === "range"){
+      const s = document.getElementById("startDate").value;
+      const e = document.getElementById("endDate").value;
+      if (!s || !e){ setStatus("Range: Start/End date দিন।", "warn"); return; }
+      if (new Date(s) > new Date(e)){ setStatus("Range: Start Date End Date এর আগে হতে হবে।", "warn"); return; }
+    }
+
+    const parsed = parseRecords(raw);
+    document.getElementById("omitted").textContent = String(parsed.omitted);
+
+    if (parsed.parsedBlocks === 0){
+      setStatus("কোনো 'Coach No' block পাওয়া যায়নি। টেক্সটে 'Coach No' আছে কিনা দেখুন।", "warn");
+      clearOutput();
+      return;
+    }
+
+    const filtered = applyFilter(parsed.kept, ft);
+    const dhakaSide = filtered.filter(r => r.parity === "ODD");
+    const routeSide = filtered.filter(r => r.parity === "EVEN");
+
+    document.getElementById("kept").textContent = String(filtered.length);
+    document.getElementById("oddCount").textContent = String(dhakaSide.length);
+    document.getElementById("evenCount").textContent = String(routeSide.length);
+
+    const limit = Number(document.getElementById("showLimit").value || 200);
+    renderTable(dhakaSide, "oddBody", "oddNote", limit);
+    renderTable(routeSide, "evenBody", "evenNote", limit);
+
+    setSoldUI(computeSoldAnalytics(filtered, routeSide, dhakaSide));
+
+    if (filtered.length === 0 && parsed.kept.length > 0){
+      if (ft === "today") setStatus(`Parsed OK, কিন্তু TODAY (${toISODate(new Date())}) এর জন্য কোনো ট্রিপ নাই। Filter=ALL দিন।`, "warn");
+      else if (ft === "monthly") setStatus("Parsed OK, কিন্তু এই মাসে কোনো ট্রিপ নাই। (Year/Month বদলান বা ALL দিন)", "warn");
+      else if (ft === "range") setStatus("Parsed OK, কিন্তু এই range-এ কোনো ট্রিপ নাই। (Range বদলান বা ALL দিন)", "warn");
+      else setStatus("Parsed OK, কিন্তু কোনো valid row নাই।", "warn");
+    } else {
+      setStatus(`Done • Filter=${ft.toUpperCase()} • Kept=${filtered.length} • Omitted=${parsed.omitted}`, "ok");
+    }
+
+    // ✅ NEW: auto clear input if checkbox checked
+    if (document.getElementById("autoClear").checked) {
+      rawTextarea.value = "";
+    }
+  }
+
+  // Events
+  routeSelect.addEventListener("change", onRouteChange);
+  document.getElementById("runBtn").addEventListener("click", run);
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    rawTextarea.value = "";
+    setStatus("", "");
+    clearOutput();
+  });
+  document.getElementById("showLimit").addEventListener("change", run);
+
+  document.getElementById("addRouteBtn").addEventListener("click", () => {
+    const val = String(document.getElementById("newRoute").value || "").trim();
+    if (!val) return;
+    const routes = loadRoutes();
+    const exists = routes.some(r => r.toLowerCase() === val.toLowerCase());
+    if (exists){ setStatus("এই route আগে থেকেই আছে।", "warn"); return; }
+    routes.push(val);
+    saveRoutes(routes);
+    document.getElementById("newRoute").value = "";
+    refreshRouteDropdown();
+    setStatus(`Route added: ${val}`, "ok");
+  });
+
+  document.getElementById("todayIso").textContent = toISODate(new Date());
+  filterTypeEl.addEventListener("change", () => { toggleFilterUI(); if (rawTextarea.value.trim() && routeSelect.value) run(); });
+  toggleFilterUI();
+
+  const today = new Date();
+  document.getElementById("startDate").value = toISODate(today);
+  document.getElementById("endDate").value = toISODate(today);
+
+  refreshRouteDropdown();
+  onRouteChange();
+})();
+</script>
+</body>
+</html>
 
